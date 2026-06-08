@@ -152,29 +152,13 @@ class CommandProcessor:
             
             m_type = parts[1]
             title = parts[2]
+            params = parts[3:]
             
-            if m_type == "Игровой":
-                if len(parts) >= 4:
-                    self.container.add(FeatureFilm(title, parts[3]))
-                else:
-                    logger.error("Ошибка: Для игрового фильма нужен режиссер.")
-            elif m_type == "Мультфильм":
-                if len(parts) >= 4:
-                    self.container.add(Cartoon(title, parts[3]))
-                else:
-                    logger.error("Ошибка: Для мультфильма нужен способ создания.")
-            elif m_type == "Сериал":
-                if len(parts) >= 5:
-                    try:
-                        episodes = int(parts[4])
-                        self.container.add(TVSeries(title, parts[3], episodes))
-                    except ValueError:
-                        logger.error("Ошибка: Количество серий должно быть целым числом.")
-                else:
-                    logger.error("Ошибка: Для сериала нужны режиссер и количество серий.")
-            else:
-                logger.error(f"Ошибка: Неизвестный тип фильма '{m_type}'. Доступны: Игровой, Мультфильм, Сериал.")
-                
+            try:
+                movie = self._create_movie(m_type, title, params)
+                self.container.add(movie)
+            except ValueError as e:
+                logger.error(f"Ошибка ADD: {e}")  
         elif cmd == 'REM':
             condition = " ".join(parts[1:])
             self.container.remove(condition)
@@ -184,6 +168,26 @@ class CommandProcessor:
             
         else:
             logger.error(f"Ошибка: Неизвестная команда '{cmd}'.")
+    
+    def _create_movie(self, m_type: str, title: str, params: List[str]) -> Movie:
+        if m_type == "Игровой":
+            if len(params) >= 1:
+                return FeatureFilm(title, params[0])
+            raise ValueError("Для игрового фильма нужен режиссер.")
+        elif m_type == "Мультфильм":
+            if len(params) >= 1:
+                return Cartoon(title, params[0])
+            raise ValueError("Для мультфильма нужен способ создания.")
+        elif m_type == "Сериал":
+            if len(params) >= 2:
+                try:
+                    episodes = int(params[1])
+                    return TVSeries(title, params[0], episodes)
+                except ValueError:
+                    raise ValueError("Количество серий должно быть целым числом.")
+            raise ValueError("Для сериала нужны режиссер и количество серий.")
+        else:
+            raise ValueError(f"Неизвестный тип фильма '{m_type}'. Доступны: Игровой, Мультфильм, Сериал.")
 
 if __name__ == "__main__":
     test_file = "commands.txt"
