@@ -1,7 +1,11 @@
 import shlex
 import re
 from abc import ABC, abstractmethod
-from typing import List, Dict
+import logging
+from typing import List, Dict, Any
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 CONDITION_PATTERN = re.compile(r'^(\w+)\s*(==|!=|>|<)\s*(.+)$')
 
@@ -10,7 +14,7 @@ class Movie(ABC):
         self.title = title
 
     @abstractmethod
-    def get_attributes(self) -> dict:
+    def get_attributes(self) -> Dict[str, Any]:
         """Возвращает словарь атрибутов для проверки условий"""
         pass
 
@@ -36,7 +40,7 @@ class Cartoon(Movie):
     def __init__(self, title: str, creation_method: str):
         super().__init__(title)
         if creation_method not in self.VALID_METHODS:
-            print(f"Предупреждение: нестандартный способ создания '{creation_method}'")
+            logger.info(f"Предупреждение: нестандартный способ создания '{creation_method}'")
         self.creation_method = creation_method
 
     def get_attributes(self) -> dict:
@@ -64,19 +68,19 @@ class MovieContainer:
 
     def add(self, movie: Movie):
         self.movies.append(movie)
-        print(f"Добавлено: {movie}")
+        logger.info(f"Добавлено: {movie}")
 
     def remove(self, condition: str):
         initial_count = len(self.movies)
         self.movies = [m for m in self.movies if not self._evaluate(m, condition)]
         removed_count = initial_count - len(self.movies)
-        print(f"Удалено объектов по условию '{condition}': {removed_count}")
+        logger.info(f"Удалено объектов по условию '{condition}': {removed_count}")
 
     def _evaluate(self, movie: Movie, condition: str) -> bool:
         """Проверяет, соответствует ли фильм условию (например, 'episodes > 10')"""
         match = CONDITION_PATTERN.match(condition.strip())
         if not match:
-            print(f"Ошибка: неверный формат условия '{condition}'. Используйте: атрибут оператор значение")
+            logger.error(f"Ошибка: неверный формат условия '{condition}'. Используйте: атрибут оператор значение")
             return False
 
         attr, op, val_str = match.groups()
@@ -129,10 +133,10 @@ class CommandProcessor:
                     if not line or line.startswith('#'):
                         continue
                     
-                    print(f"Выполнение команды (строка {line_num}): {line}")
+                    logger.info(f"Выполнение команды (строка {line_num}): {line}")
                     self._execute_command(line)
         except FileNotFoundError:
-            print(f"Ошибка: Файл '{filepath}' не найден.")
+            logger.error(f"Ошибка: Файл '{filepath}' не найден.")
 
     def _execute_command(self, line: str):
         parts = shlex.split(line)
@@ -143,7 +147,7 @@ class CommandProcessor:
         
         if cmd == 'ADD':
             if len(parts) < 3:
-                print("Ошибка ADD: недостаточно аргументов. Формат: ADD <Тип> <Название> <Параметры>")
+                logger.error("Ошибка ADD: недостаточно аргументов. Формат: ADD <Тип> <Название> <Параметры>")
                 return
             
             m_type = parts[1]
@@ -153,23 +157,23 @@ class CommandProcessor:
                 if len(parts) >= 4:
                     self.container.add(FeatureFilm(title, parts[3]))
                 else:
-                    print("Ошибка: Для игрового фильма нужен режиссер.")
+                    logger.error("Ошибка: Для игрового фильма нужен режиссер.")
             elif m_type == "Мультфильм":
                 if len(parts) >= 4:
                     self.container.add(Cartoon(title, parts[3]))
                 else:
-                    print("Ошибка: Для мультфильма нужен способ создания.")
+                    logger.error("Ошибка: Для мультфильма нужен способ создания.")
             elif m_type == "Сериал":
                 if len(parts) >= 5:
                     try:
                         episodes = int(parts[4])
                         self.container.add(TVSeries(title, parts[3], episodes))
                     except ValueError:
-                        print("Ошибка: Количество серий должно быть целым числом.")
+                        logger.error("Ошибка: Количество серий должно быть целым числом.")
                 else:
-                    print("Ошибка: Для сериала нужны режиссер и количество серий.")
+                    logger.error("Ошибка: Для сериала нужны режиссер и количество серий.")
             else:
-                print(f"Ошибка: Неизвестный тип фильма '{m_type}'. Доступны: Игровой, Мультфильм, Сериал.")
+                logger.error(f"Ошибка: Неизвестный тип фильма '{m_type}'. Доступны: Игровой, Мультфильм, Сериал.")
                 
         elif cmd == 'REM':
             condition = " ".join(parts[1:])
@@ -179,7 +183,7 @@ class CommandProcessor:
             self.container.print_all()
             
         else:
-            print(f"Ошибка: Неизвестная команда '{cmd}'.")
+            logger.error(f"Ошибка: Неизвестная команда '{cmd}'.")
 
 if __name__ == "__main__":
     test_file = "commands.txt"
