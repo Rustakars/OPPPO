@@ -3,6 +3,8 @@ import re
 from abc import ABC, abstractmethod
 from typing import List, Dict
 
+CONDITION_PATTERN = re.compile(r'^(\w+)\s*(==|!=|>|<)\s*(.+)$')
+
 class Movie(ABC):
     def __init__(self, title: str):
         self.title = title
@@ -72,7 +74,7 @@ class MovieContainer:
 
     def _evaluate(self, movie: Movie, condition: str) -> bool:
         """Проверяет, соответствует ли фильм условию (например, 'episodes > 10')"""
-        match = re.match(r'(\w+)\s*(==|!=|>|<)\s*(.+)', condition.strip())
+        match = CONDITION_PATTERN.match(condition.strip())
         if not match:
             print(f"Ошибка: неверный формат условия '{condition}'. Используйте: атрибут оператор значение")
             return False
@@ -86,19 +88,24 @@ class MovieContainer:
         val = attrs[attr]
 
         try:
-            val_to_compare = int(val_str)
+            if isinstance(val, int):
+                val_to_compare = int(val_str)
+            elif isinstance(val, float):
+                val_to_compare = float(val_str)
+            else:
+                val_to_compare = val_str.strip('"\'')
         except ValueError:
             val_to_compare = val_str.strip('"\'')
 
         if op == '==':
-            return str(val) == str(val_to_compare)
+            return val == val_to_compare
         elif op == '!=':
-            return str(val) != str(val_to_compare)
-        elif op in ('>', '<'):
-            try:
-                return eval(f"{int(val)} {op} {val_to_compare}")
-            except (ValueError, TypeError):
-                return False
+            return val != val_to_compare
+        elif op == '>':
+            return isinstance(val, (int, float)) and isinstance(val_to_compare, (int, float)) and val > val_to_compare
+        elif op == '<':
+            return isinstance(val, (int, float)) and isinstance(val_to_compare, (int, float)) and val < val_to_compare
+
         return False
 
     def print_all(self):
